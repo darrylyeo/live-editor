@@ -1,0 +1,371 @@
+<title></title>
+<link href='https://fonts.googleapis.com/css?family=Slabo+13px|Asap:400,900|Roboto+Mono:400,900' rel='stylesheet' type='text/css'>
+<style>
+	* {
+		box-sizing: border-box;
+	}
+	
+	html {
+		height: 100%;
+	}
+	
+	body {
+		background: #f6f6f6;
+		/*color: rgba(0, 0, 0, 0.6);
+		font-family: Asap, sans-serif;*/
+		margin: 0;
+		height: 100%;
+	}
+	
+	iframe {
+		border: none;
+	}
+	
+	/*h1,
+	h2,
+	h3 {
+		display: inline-block;
+		font-family: "Slabo 13px", sans-serif;
+		margin: 0;
+	}
+	
+	h1,
+	h2,
+	h3,
+	p {
+		margin-top: 0;
+	}
+	
+	h1 {
+		font-size: 24px;
+	}
+	
+	h2 {
+		font-size: 18px;
+	}
+	
+	p {
+		margin-top: 0;
+	}
+	
+	hr {
+		border-left: none;
+		border-top: rgba(0, 0, 0, 0.2) 1px solid;
+		border-bottom: rgba(255, 255, 255, 0.6) 1px solid;
+		margin: 1.25em -6px;
+	}
+	
+	a {
+		color: #67b7e1;
+		text-decoration: none;
+		text-shadow: rgba(0, 0, 0, 0.05) 1px 1px;
+	}*/
+	
+	#editor-wrapper, #output {
+		float: right;
+		width: 100%;
+		height: 100%;
+		position: relative;
+	}
+	#editor {
+		width: 100%;
+		height: 100%;
+		position: relative;
+	}
+	#output {
+		overflow-y: scroll;
+	}
+	@media (min-width: 601px) {
+		#editor-wrapper, #output {
+			width: 50%;
+		}
+		#editor-wrapper {
+			width: 55%;
+		}
+		#output {
+			width: 45%;
+		}
+	
+		body.mode-pjs #editor-wrapper {
+			width: calc(100% - 400px);
+		}
+		body.mode-pjs #output {
+			width: 400px;
+		}
+	}
+	
+	@media (max-width: 600px) {
+		#editor-wrapper, #output {
+			height: 50%;
+		}
+	
+		body.mode-pjs #editor-wrapper {
+			height: calc(100% - 400px);
+		}
+		body.mode-pjs #output {
+			height: 400px;
+		}
+	}
+	
+	body.no-editor #editor-wrapper,
+	body.no-output #output {
+		display: none;
+	}
+	body.no-output #editor-wrapper,
+	body.no-editor #output {
+		width: 100%;
+		height: 100%;
+	}
+	
+	#settings {
+		position: absolute;
+		width: 30px;
+		height: 30px;
+		/*right: 10px;
+		bottom: 10px;*/
+		right: 1.5vmin;
+		bottom: 1.5vmin;
+		-webkit-transition: .3s;
+		transition: .3s;
+		z-index: 1;
+	}
+	
+	#editor-wrapper:not(:hover) #settings {
+		opacity: 0;
+	}
+	/*#settings:hover {
+		height: 100px;
+	}*/
+	
+	input {
+		-webkit-appearance: none;
+		background: rgba(0, 0, 0, 0.1);
+		border-radius: 3px;
+		box-shadow: rgba(0, 0, 0, 0.05) 0 2px 3px;
+		cursor: pointer;
+		margin: 0;
+		width: 26px;
+		height: 26px;
+		-webkit-transition: .2s;
+		transition: .2s;
+	}
+	input:hover {
+		-webkit-transform: scale(1.15);
+		-ms-transform: scale(1.15);
+		transform: scale(1.15);
+	}
+	input:checked {
+		background: #67b7e1;
+	}
+	#fullscreen {
+		background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><g stroke="#000" stroke-width="2" opacity="0.2"><line x1="0" y1="0" x2="0" y2="3"/><line x1="0" y1="0" x2="3" y2="0"/><line x1="5" y1="0" x2="8" y2="0"/><line x1="8" y1="0" x2="8" y2="3"/><line x1="0" y1="8" x2="0" y2="5"/><line x1="0" y1="8" x2="3" y2="8"/><line x1="5" y1="8" x2="8" y2="8"/><line x1="8" y1="8" x2="8" y2="5"/></g></svg>');
+		background-position: center center;
+		background-repeat: no-repeat;
+		background-size: 18px;
+	}
+</style>
+<iframe id="output"></iframe>
+<div id="editor-wrapper">
+	<div id="editor"></div>
+	<div id="settings">
+		<input id="fullscreen" type="checkbox" title="Toggle Fullscreen">
+	</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/ace.js" type="text/javascript" charset="utf-8"></script>
+<script>
+	var search = location.search.substring(1);
+	var urlParams = {};
+	if (search) try {
+		urlParams = JSON.parse('{"' + search.replace(/&/g, '","').replace(/=/g, '":"') + '"}', function(key, value) {
+			return key === "" ? value : decodeURIComponent(value)
+		});
+	} catch (e) {}
+
+	var settings = {
+		autosave: urlParams.code === undefined,
+		lang: urlParams.lang || "html",
+		mode: urlParams.mode || "html",
+		layout: urlParams.layout || "auto",
+		noEditor: urlParams.editor === "0",
+		noOutput: urlParams.output === "0"
+	};
+	settings.localStorageKey = "live-editor-text-" + settings.lang + "-" + settings.mode;
+	if(settings.mode === "pjs") settings.lang = "javascript";
+	
+	
+	
+	
+	var editor;
+	var output = document.getElementById("output");
+	var outputDocument = output.contentDocument || output.contentWindow.document;
+
+	
+	
+	function editorSetup() {
+		editor = ace.edit("editor");
+		editor.setTheme("ace/theme/chrome");
+		editor.setOption("fontFamily", "Roboto Mono");
+		editor.session.setMode("ace/mode/" + settings.lang);
+		editor.session.setUseWrapMode(true);
+		editor.session.setUseSoftTabs(false);
+
+		document.body.classList.add("lang-" + settings.lang);
+		document.body.classList.add("mode-" + settings.mode);
+		document.body.classList.add("layout-" + settings.layout);
+		
+		if (urlParams.code) {
+			editor.setValue(urlParams.code, -1);
+		}
+		if (settings.autosave) {
+			var storedCode = window.localStorage.getItem(settings.localStorageKey);
+			storedCode && editor.setValue(storedCode, -1);
+		}
+		if (settings.noEditor) {
+			document.body.classList.add("no-editor");
+		}
+		if (settings.noOutput) {
+			document.body.classList.add("no-output");
+		}
+
+		// Run a test on the code upon every change.
+		/*editor.getSession().on('change', function(e) {
+			updateOutput();
+		});*/
+		editor.getSession().on('changeAnnotation' , function(e) {
+			var hasError = false;
+			editor.getSession().getAnnotations().forEach(function(annotation, i) {
+				if (annotation.type === "error"){
+					hasError = true;
+					return false;
+				}
+			});
+			if(!hasError)
+			updateOutput();
+		});
+	}
+	
+	var processingJSLoaded = false;
+	function outputSetup() {
+		if(settings.mode === "pjs"){
+			var style = outputDocument.createElement("style");
+			style.innerHTML = "body {margin: 0}";
+			outputDocument.body.appendChild(style);
+			
+			var canvas = outputDocument.createElement("canvas");
+			outputDocument.body.appendChild(canvas);
+			
+			var processingJS = outputDocument.createElement("script");
+			outputDocument.body.appendChild(processingJS);
+			processingJS.onload = function(){
+				processingJSLoaded = true;
+				updateOutput();
+			}
+			processingJS.src = "https://cdn.rawgit.com/processing-js/processing-js/v1.4.8/processing.min.js";
+			
+			var script = outputDocument.createElement("script");
+			script.innerHTML = "var canvas = document.querySelector('canvas'); var __reset__ = false;";
+			outputDocument.body.appendChild(script);
+		}
+	}
+	
+	function updateOutput() {
+		if(settings.noOutput) return;
+
+		var code = editor.getValue();
+
+		if(settings.lang === "html"){
+			outputDocument.body.innerHTML = code;
+		}else if(settings.lang === "javascript"){
+			var script = outputDocument.createElement("script");
+			script.innerHTML = code;
+			if(settings.mode === "pjs"){
+				script.innerHTML = processingJSLoaded ? ("(" + function(){
+					__reset__ = true;
+					window.__Program__ && window.__Program__.exit();
+					window.__Program__ = new Processing(canvas, function(processingJS){
+						var __draw__;
+						processingJS.mouseIsPressed = processingJS.mousePressed;
+						with(processingJS){
+							setup = function(){
+								size(400, 400);
+								/*{{code}}*/;
+								__draw__ = draw;
+								draw = function(){
+									/*if(__reset__){
+										__reset__ = false;
+										//noLoop();
+									}*/
+									mouseIsPressed = __mousePressed;
+									__draw__();
+								};
+							}
+						}
+					});
+				} + ")()").replace("/*{{code}}*/", code).replace("/*{{code}}*/", "") : "";
+			}
+			outputDocument.body.appendChild(script);
+		}
+		if (settings.autosave) window.localStorage.setItem(settings.localStorageKey, code);
+
+		document.title = outputDocument.title || "Live Editor - Darryl Yeo";
+	}
+	editorSetup();
+	outputSetup();
+	updateOutput();
+
+
+	//document.getElementById("settings").style.right = "calc(1.5vmin + " + getScrollbarWidth() + "px";
+
+	document.getElementById("fullscreen").addEventListener("change", function() {
+		var d = document;
+		var dE = d.documentElement;
+		if (!d.fullscreenElement && // alternative standard method
+			!d.mozFullScreenElement && !d.webkitFullscreenElement && !d.msFullscreenElement) { // current working methods
+			if (dE.requestFullscreen) {
+				dE.requestFullscreen();
+			} else if (dE.msRequestFullscreen) {
+				dE.msRequestFullscreen();
+			} else if (dE.mozRequestFullScreen) {
+				dE.mozRequestFullScreen();
+			} else if (dE.webkitRequestFullscreen) {
+				dE.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+			}
+		} else {
+			if (d.exitFullscreen) {
+				d.exitFullscreen();
+			} else if (d.msExitFullscreen) {
+				d.msExitFullscreen();
+			} else if (d.mozCancelFullScreen) {
+				d.mozCancelFullScreen();
+			} else if (d.webkitExitFullscreen) {
+				d.webkitExitFullscreen();
+			}
+		}
+	})
+	
+	// http://stackoverflow.com/questions/13382516/getting-scroll-bar-width-using-javascript
+	function getScrollbarWidth() {
+		var outer = document.createElement("div");
+		outer.style.visibility = "hidden";
+		outer.style.width = "100px";
+		outer.style.msOverflowStyle = "scrollbar"; // needed for WinJS apps
+		document.body.appendChild(outer);
+
+		var widthNoScroll = outer.offsetWidth;
+		// force scrollbars
+		outer.style.overflow = "scroll";
+
+		// add innerdiv
+		var inner = document.createElement("div");
+		inner.style.width = "100%";
+		outer.appendChild(inner);        
+
+		var widthWithScroll = inner.offsetWidth;
+
+		// remove divs
+		outer.parentNode.removeChild(outer);
+
+		return widthNoScroll - widthWithScroll;
+	}
+</script>
